@@ -38,7 +38,7 @@ func main() {
 		sqlDB.Close()
 	}()
 
-	port := conf.Database.Port
+	_ = conf.Database.Port
 	dsn := conf.Database.DSN
 
 	//start the server
@@ -57,7 +57,7 @@ func main() {
 
 
 
-	portStr := fmt.Sprintf(":%s", port)
+	portStr := fmt.Sprintf(":8080")
 	fmt.Println(portStr, dsn)
 	router.Run(portStr)
 }

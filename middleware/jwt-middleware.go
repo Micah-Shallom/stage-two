@@ -56,6 +56,7 @@ func JWTMiddleware() gin.HandlerFunc {
 		// Set the user ID in the context
 		claims := token.Claims.(jwt.MapClaims)
 		c.Set("UserID", claims["sub"])
+		// c.Set("ExpiresAt", claims["ExpiresAt"])
 
 		// Continue with the request
 		c.Next()

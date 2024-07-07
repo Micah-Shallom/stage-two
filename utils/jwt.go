@@ -2,14 +2,13 @@ package utils
 
 import (
 	"os"
+	"time"
 
 	"github.com/Micah-Shallom/stage-two/models"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtSecret = []byte(os.Getenv(
-	"JWT_SECRET",
-))
+var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
 type SignedDetails struct {
 	FirstName string
@@ -21,13 +20,16 @@ type SignedDetails struct {
 }
 
 func GenerateJWT(user *models.User) (string, error) {
+	expirationTime := time.Now().Add(7 * 24 * time.Hour) // 1 week
 	claims := &SignedDetails{
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
 		Email:     user.Email,
 		UserID:    user.UserID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Subject: user.UserID,
+			Subject:   user.UserID,
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
 
