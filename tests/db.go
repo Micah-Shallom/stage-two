@@ -1,14 +1,14 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
+	"time"
 
 	"github.com/Micah-Shallom/stage-two/models"
+	"github.com/go-pg/pg/v10"
 	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -21,11 +21,12 @@ const (
 	DROP = "DROP"
 )
 
-// ConnectDB - It will be used anywhere in the application to connect database.
-func SetupTestDB() (*gorm.DB, error) {
+func connectDB() (*gorm.DB, error) {
 	test_dsn := os.Getenv("TEST_DSN")
 
 	db, err := gorm.Open(postgres.Open(test_dsn), &gorm.Config{})
+	fmt.Println(err)
+
 	if err != nil {
 		log.Printf("Error connecting database.\n%v", err)
 		return nil, err
@@ -40,56 +41,77 @@ func SetupTestDB() (*gorm.DB, error) {
 		return nil, err
 	}
 
+	log.Println("Database Connected Successfully")
+
 	return db, nil
+}
+
+// ConnectDB - It will be used anywhere in the application to connect database.
+func SetupTestDB() (*gorm.DB, error) {
+	// Create the database
+	MockedDB(CREATE)
+
+	//Retry mechanism
+	for i := 0; i < 5; i++ {
+		db, err := connectDB()
+		if err != nil {
+			log.Printf("Failed to connect to the database: %v", err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		return db, nil
+	}
+
+	return nil, fmt.Errorf("Failed to connect to the database after 5 retries")
 }
 
 // MockedDB is used in unit tests to mock db
 func MockedDB(operation string) {
-	/*
-	   If tests are running in CI, environment variables should not be loaded.
-	   The reason is environment vars will be provided through CI config file.
-	*/
-	if CI := os.Getenv("CI"); CI == "" {
-		// If tests are not running in CI, we have to load .env file.
-		_, fileName, _, _ := runtime.Caller(0)
-		currPath := filepath.Dir(fileName)
-		// path should be relative path from this directory to ".env"
-		err := godotenv.Load(currPath + "/../../.env")
-		if err != nil {
-			log.Fatalf("Error loading env.\n%v", err)
-		}
+	if err := godotenv.Load("../.env"); err != nil {
+		log.Fatalf("Error loading env %v", err)
 	}
 
-	dbName := os.Getenv("DATABASE_NAME")
 	pgUser := os.Getenv("PSQL_USER")
 	pgPassword := os.Getenv("PSQL_PASSWORD")
+	dbName := "testdb"
 
-	// createdb => https://www.postgresql.org/docs/7.0/app-createdb.htm
-	// dropdb => https://www.postgresql.org/docs/7.0/app-dropdb.htm
-	var command string
+	options := &pg.Options{
+		User:     pgUser,
+		Password: pgPassword,
+		Addr:     "localhost:5432",
+		Database: "postgres", // Connect to the postgres database first
+	}
+
+	db := pg.Connect(options)
+	defer db.Close()
+
+	ctx := context.Background()
 
 	if operation == CREATE {
-		command = "createdb"
-	} else {
-		command = "dropdb"
+
+		_, err := db.ExecContext(ctx, fmt.Sprintf("CREATE DATABASE %s", dbName))
+		if err != nil {
+			fmt.Printf("Error creating database %s: %v", dbName, err)
+			return
+		}
+		log.Printf("Database %s created successfully", dbName)
+	} else if operation == DROP {
+		// Terminate all connections to the database
+		_, err := db.ExecContext(ctx, fmt.Sprintf(`
+			SELECT pg_terminate_backend(pg_stat_activity.pid)
+			FROM pg_stat_activity
+			WHERE pg_stat_activity.datname = '%s' AND pid <> pg_backend_pid();
+		`, dbName))
+		if err != nil {
+			fmt.Printf("Error terminating connections to database %s: %v", dbName, err)
+			return
+		}
+
+		_, err = db.ExecContext(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s", dbName))
+		if err != nil {
+			fmt.Printf("Error dropping database %s: %v", dbName, err)
+			return
+		}
+		log.Printf("Database %s dropped successfully", dbName)
 	}
-
-	// createdb & dropdb commands have same configuration syntax.
-	cmd := exec.Command(command, "-h", "localhost", "-U", pgUser, "-e", dbName)
-	cmd.Env = os.Environ()
-
-	/*
-	   if we normally execute createdb/dropdb, we will be prompted to provide password.
-	   To inject password automatically, we have to set PGPASSWORD as prefix.
-	*/
-	cmd.Env = append(cmd.Env, fmt.Sprintf("PGPASSWORD=%v", pgPassword))
-
-	if err := cmd.Run(); err != nil {
-		log.Fatalf("Error executing %v on %v.\n%v", command, dbName, err)
-	}
-
-	/*
-	   Alternatively instead of createdb/dropdb, you can use
-	   psql -c "CREATE/DROP DATABASE DBNAME" "DATABASE_URL"
-	*/
 }
