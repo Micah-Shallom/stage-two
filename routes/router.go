@@ -2,7 +2,6 @@ package routes
 
 import (
 	"github.com/Micah-Shallom/stage-two/handlers"
-	"github.com/Micah-Shallom/stage-two/middleware"
 	"github.com/gin-gonic/gin"
 )
 
@@ -15,7 +14,7 @@ func Routes(r *gin.Engine, handler *handlers.Handlers) *gin.Engine {
 	SetupErrorRoutes(r)
 
 	//middleware to protect routes
-	r.Use(middleware.JWTMiddleware())
+	// r.Use(middleware.JWTMiddleware())
 
 	//protected routes
 	//USER routes
