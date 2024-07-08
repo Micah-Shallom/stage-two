@@ -14,7 +14,7 @@ import (
 
 func main() {
 	//load dotenv
-	if err := godotenv.Load(); err != nil {
+	if err := godotenv.Load(".env"); err != nil {
 		log.Println("Error loading .env file")
 	}
 

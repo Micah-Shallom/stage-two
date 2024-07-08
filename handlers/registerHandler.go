@@ -49,7 +49,7 @@ func (h *Handlers) RegisterUserHandler(c *gin.Context) {
 	//save user model to the database
 	err = h.App.Models.Users.Create(user)
 	if err != nil {
-		utils.BadRequestResponse(c, "Registration unsuccessful", http.StatusBadRequest, err)
+		utils.BadRequestResponse(c, "Registration unsuccessful", 400, err)
 		return
 	}
 
@@ -65,7 +65,7 @@ func (h *Handlers) RegisterUserHandler(c *gin.Context) {
 	err = h.App.Models.Organisations.Create(org)
 	if err != nil {
 		utils.LogError(c, err)
-		utils.BadRequestResponse(c, "Registration unsuccessful", http.StatusBadRequest, err)
+		utils.BadRequestResponse(c, "Registration unsuccessful", 400, err)
 		return
 	}
 
@@ -73,7 +73,7 @@ func (h *Handlers) RegisterUserHandler(c *gin.Context) {
 	accessToken, err := utils.GenerateJWT(user)
 	if err != nil {
 		utils.LogError(c, err)
-		utils.BadRequestResponse(c, "Registration unsuccessful", http.StatusBadRequest, err)
+		utils.BadRequestResponse(c, "Registration unsuccessful", 400, err)
 		return
 	}
 

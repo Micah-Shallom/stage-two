@@ -51,5 +51,5 @@ func ValidationErrorResponse(c *gin.Context, errors any) {
 	env := Envelope{
 		"errors": errors,
 	}
-	ErrorResponse(c, http.StatusUnprocessableEntity, env)
+	ErrorResponse(c, 422, env)
 }

@@ -25,13 +25,13 @@ func (h *Handlers) LoginUserHandler(c *gin.Context) {
 	user, err := h.App.Models.Users.GetByEmail(input.Email)
 	if err != nil {
 		utils.LogError(c, err)
-		utils.BadRequestResponse(c, "Login unsuccessful", 401, err)
+		utils.BadRequestResponse(c, "Authentication failed", 401, err)
 		return
 	}
 
 	//check if password is correct
 	if match := utils.CheckPasswordHash(input.Password, user.Password); !match {
-		utils.BadRequestResponse(c, "Login unsuccessful", 401, err)
+		utils.BadRequestResponse(c, "Authentication failed", 401, err)
 		return
 	}
 
@@ -40,7 +40,7 @@ func (h *Handlers) LoginUserHandler(c *gin.Context) {
 	if err != nil {
 		utils.LogError(c, err)
 		// app.errorResponse(c, http.StatusInternalServerError, envelope{"error": "Failed to generate JWT"})
-		utils.BadRequestResponse(c, "Login unsuccessful", 401, err)
+		utils.BadRequestResponse(c, "Authentication failed", 401, err)
 		return
 	}
 
