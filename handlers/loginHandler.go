@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"encoding/json"
+
 	"github.com/Micah-Shallom/stage-two/utils"
+	"github.com/Micah-Shallom/stage-two/validator"
 	"github.com/gin-gonic/gin"
 )
 
@@ -9,20 +12,25 @@ import (
 func (h *Handlers) LoginUserHandler(c *gin.Context) {
 
 	// Create an anonymous struct to hold the data that we expect to be in the request body
-	var input struct {
-		Email    string `json:"email" validate:"required,email"`
-		Password string `json:"password" validate:"required"`
-	}
+	var loginreq validator.LoginReq
 
 	// Parse the request body into the anonymous struct
-	valid, errors := utils.ReadRequest(c, &input)
-	if !valid {
-		utils.ValidationErrorResponse(c, errors)
+	err := utils.ReadRequest(c, &loginreq)
+	if err != nil {
+		utils.BadRequestResponse(c, "Authentication failed", 401, err)
+		return
+	}
+
+	//perform validation for the loginrequest struct
+	errorResponse, err := loginreq.Validate()
+
+	if errorResponse != nil || err != nil {
+		utils.ValidationErrorResponse(c, json.RawMessage(errorResponse))
 		return
 	}
 
 	//retrieve user from the database
-	user, err := h.App.Models.Users.GetByEmail(input.Email)
+	user, err := h.App.Models.Users.GetByEmail(loginreq.Email)
 	if err != nil {
 		utils.LogError(c, err)
 		utils.BadRequestResponse(c, "Authentication failed", 401, err)
@@ -30,7 +38,7 @@ func (h *Handlers) LoginUserHandler(c *gin.Context) {
 	}
 
 	//check if password is correct
-	if match := utils.CheckPasswordHash(input.Password, user.Password); !match {
+	if match := utils.CheckPasswordHash(loginreq.Password, user.Password); !match {
 		utils.BadRequestResponse(c, "Authentication failed", 401, err)
 		return
 	}

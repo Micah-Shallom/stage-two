@@ -3,8 +3,8 @@ package models
 import "gorm.io/gorm"
 
 type Organisation struct {
-	OrgID       string `json:"orgId" gorm:"primaryKey;unique;not null" validate:"required"`
-	Name        string `json:"name" gorm:"not null" validate:"required"`
+	OrgID       string `json:"orgId" gorm:"primaryKey;unique;not null"`
+	Name        string `json:"name" gorm:"not null"`
 	Description string `json:"description"`
 	Users       []User `json:"users" gorm:"many2many:user_organisations;foreignKey:OrgID;joinForeignKey:org_id;References:UserID;joinReferences:user_id"`
 }

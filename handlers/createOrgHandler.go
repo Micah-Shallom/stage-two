@@ -1,24 +1,31 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/Micah-Shallom/stage-two/models"
 	"github.com/Micah-Shallom/stage-two/utils"
+	"github.com/Micah-Shallom/stage-two/validator"
 	"github.com/gin-gonic/gin"
 )
 
 func (h *Handlers) CreateOrganisationHandler(c *gin.Context) {
 	// Create an anonymous struct to hold the data that we expect to be in the request body
-	var input struct {
-		Name        string `json:"name" validate:"required"`
-		Description string `json:"description" validate:"required"`
-	}
+	var orgReg validator.OrgRegisterReq
 
 	// Parse the request body into the anonymous struct
-	valid, errors := utils.ReadRequest(c, &input)
-	if !valid {
-		utils.ValidationErrorResponse(c, errors)
+	err := utils.ReadRequest(c, &orgReg)
+	if err != nil {
+		utils.BadRequestResponse(c, "Client error", 400, err)
+		return
+	}
+
+	//perform validation for the request struct
+	errorResponse, err := orgReg.Validate()
+
+	if errorResponse != nil || err != nil {
+		utils.ValidationErrorResponse(c, json.RawMessage(errorResponse))
 		return
 	}
 
@@ -32,12 +39,12 @@ func (h *Handlers) CreateOrganisationHandler(c *gin.Context) {
 	// Create a new Organisation object containing the data that we read from the request body
 	org := &models.Organisation{
 		OrgID:       utils.GenerateUUID(),
-		Name:        input.Name,
-		Description: input.Description,
+		Name:        orgReg.Name,
+		Description: orgReg.Description,
 	}
 
 	//save organisation model to the database
-	err := h.App.Models.Organisations.Create(org)
+	err = h.App.Models.Organisations.Create(org)
 	if err != nil {
 		utils.BadRequestResponse(c, "Client error", 400, err)
 		return

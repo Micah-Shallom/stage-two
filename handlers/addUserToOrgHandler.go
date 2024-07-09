@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/Micah-Shallom/stage-two/utils"
+	"github.com/Micah-Shallom/stage-two/validator"
 	"github.com/gin-gonic/gin"
 )
 
@@ -12,14 +14,19 @@ func (h *Handlers) AddUserToOrganisationHandler(c *gin.Context) {
 	orgID := c.Param("orgId")
 
 	// Create an anonymous struct to hold the data that we expect to be in the request body
-	var input struct {
-		UserID string `json:"userId" validate:"required"`
-	}
+	var oauReq validator.OrgAddUserReq
 
 	// Parse the request body into the anonymous struct
-	valid, errors := utils.ReadRequest(c, &input)
-	if !valid {
-		utils.ValidationErrorResponse(c, errors)
+	err := utils.ReadRequest(c, &oauReq)
+	if err != nil {
+		utils.BadRequestResponse(c, "Client error", 400, err)
+		return
+	}
+
+	//perform validation for the request struct
+	errorResponse, err := oauReq.Validate()
+	if errorResponse != nil || err != nil {
+		utils.ValidationErrorResponse(c, json.RawMessage(errorResponse))
 		return
 	}
 
@@ -54,7 +61,7 @@ func (h *Handlers) AddUserToOrganisationHandler(c *gin.Context) {
 	}
 
 	//check if the user to be added to the organization exists
-	user, err := h.App.Models.Users.GetByID(input.UserID)
+	user, err := h.App.Models.Users.GetByID(oauReq.UserId)
 	if err != nil {
 		utils.BadRequestResponse(c, "Client error", 400, err)
 		return
